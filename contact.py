@@ -6,8 +6,8 @@ from starlette.middleware.cors import CORSMiddleware
 from operations import * # importing everything from operations
 
 routes = [
-    Route("/contacts", endpoint=list_all_contacts, methods=["GET"]),
-    Route("/contact", endpoint=contact_creation, methods=["POST"]),
+    Route("/contacts/", endpoint=list_all_contacts, methods=["GET"]),
+    Route("/contact/", endpoint=contact_creation, methods=["POST"]),
     Route("/contacts/{contactId:int}", endpoint=contact_details, methods=["GET"]),
     Route("/contacts/{contactId:int}", endpoint=delete_contact, methods=["DELETE"]),
     Route("/contacts/{contactId:int}", endpoint=edit_contact, methods=["PUT"]),
