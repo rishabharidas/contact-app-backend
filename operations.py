@@ -1,10 +1,8 @@
-from ast import Return
-import json,operator
+import json
 from starlette.responses import JSONResponse
 from sqlalchemy import JSON, delete
 from databasedata import connected_engine
 from sqlalchemy.sql import insert, update, delete
-import json
 
 from tables import contactemails, contactphones, contactstable
 
@@ -67,50 +65,50 @@ async def contact_creation(request):
                 connected_engine.execute(email_query)
                 
 
-    return JSONResponse(received_contact)
+    return JSONResponse({"contactId": contactId})
 
 async def list_all_contacts(request):
     """function to list all contacts."""
     contacts = []
 
     query = f"""
-    select json_object(
-        "contactId", contactstable.contactId,
-        "firstName", contactstable.firstName,
-        "lastName", contactstable.lastName,
-        "phones", (
-            select json_arrayagg(
-                        json_object(
-                            "type", contactphones.type,
-                            "phoneNumber", contactphones.phoneNumber
+        select json_object(
+            "contactId", contactstable.contactId,
+            "firstName", contactstable.firstName,
+            "lastName", contactstable.lastName,
+            "phones", (
+                select json_arrayagg(
+                            json_object(
+                                "type", contactphones.type,
+                                "phoneNumber", contactphones.phoneNumber
+                            )
                         )
-                    )
-                    from contactphones
-                where
-                    contactphones.contactId = contactstable.contactId
-                ),
-                "emails", (
-                    select json_arrayagg(
-                        json_object(
-                            "type", contactemails.type,
-                            "emailValue", contactemails.emailValue
+                        from contactphones
+                    where
+                        contactphones.contactId = contactstable.contactId
+                    ),
+                    "emails", (
+                        select json_arrayagg(
+                            json_object(
+                                "type", contactemails.type,
+                                "emailValue", contactemails.emailValue
+                            )
                         )
-                    )
-                    from contactemails
-                where 
-                    contactemails.contactId = contactstable.contactId
-                ),
-                "notes", contactstable.notes,
-                "job", json_object(
-                            "companyName", contactstable.companyName,
-                            "jobTitle", contactstable.jobTitle
-                        )
-            ) as contacts from contactstable
-        left join contactemails
-            on contactemails.contactId = contactstable.contactId
-        left join contactphones
-            on contactphones.contactId = contactstable.contactId 
-    group by contactstable.contactId""" # query to take all contacts
+                        from contactemails
+                    where 
+                        contactemails.contactId = contactstable.contactId
+                    ),
+                    "notes", contactstable.notes,
+                    "job", json_object(
+                                "companyName", contactstable.companyName,
+                                "jobTitle", contactstable.jobTitle
+                            )
+                ) as contacts from contactstable
+            left join contactemails
+                on contactemails.contactId = contactstable.contactId
+            left join contactphones
+                on contactphones.contactId = contactstable.contactId 
+        group by contactstable.contactId""" # query to take all contacts
     contact_data = connected_engine.execute(query)
     for contact in contact_data:
         contacts.append(json.loads(contact.contacts)) #append contacts to list
@@ -176,45 +174,45 @@ async def search_contact(request):
     requested_contactname = request.query_params['name']
 
     details_query = f"""
-        select json_object(
-        "contactId", contactstable.contactId,
-        "firstName", contactstable.firstName,
-        "lastName", contactstable.lastName,
-        "phones", (
-            select json_arrayagg(
-                        json_object(
-                            "type", contactphones.type,
-                            "phoneNumber", contactphones.phoneNumber
+            select json_object(
+            "contactId", contactstable.contactId,
+            "firstName", contactstable.firstName,
+            "lastName", contactstable.lastName,
+            "phones", (
+                select json_arrayagg(
+                            json_object(
+                                "type", contactphones.type,
+                                "phoneNumber", contactphones.phoneNumber
+                            )
                         )
-                    )
-                    from contactphones
-                where
-                    contactphones.contactId = contactstable.contactId
-                ),
-                "emails", (
-                    select json_arrayagg(
-                        json_object(
-                            "type", contactemails.type,
-                            "emailValue", contactemails.emailValue
+                        from contactphones
+                    where
+                        contactphones.contactId = contactstable.contactId
+                    ),
+                    "emails", (
+                        select json_arrayagg(
+                            json_object(
+                                "type", contactemails.type,
+                                "emailValue", contactemails.emailValue
+                            )
                         )
-                    )
-                    from contactemails
-                where 
-                    contactemails.contactId = contactstable.contactId
-                ),
-                "notes", contactstable.notes,
-                "job", json_object(
-                            "companyName", contactstable.companyName,
-                            "jobTitle", contactstable.jobTitle
-                        )
-            ) as contact from contactstable
-        left join contactemails
-            on contactemails.contactId = contactstable.contactId
-        left join contactphones
-            on contactphones.contactId = contactstable.contactId 
-    where contactstable.firstName = '{requested_contactname}'
-    or contactstable.lastName = '{requested_contactname}'
-    group by contactstable.contactId""" # query to search contacts
+                        from contactemails
+                    where 
+                        contactemails.contactId = contactstable.contactId
+                    ),
+                    "notes", contactstable.notes,
+                    "job", json_object(
+                                "companyName", contactstable.companyName,
+                                "jobTitle", contactstable.jobTitle
+                            )
+                ) as contact from contactstable
+            left join contactemails
+                on contactemails.contactId = contactstable.contactId
+            left join contactphones
+                on contactphones.contactId = contactstable.contactId 
+        where contactstable.firstName = '{requested_contactname}'
+        or contactstable.lastName = '{requested_contactname}'
+        group by contactstable.contactId""" # query to search contacts
 
     contact_result=  connected_engine.execute(details_query)
 
@@ -442,7 +440,7 @@ async def edit_contact(request):
         except:
             await email_insertion()  
     
-    return JSONResponse()
+    return JSONResponse("sucess")
 
 async def delete_contact(request):
     """function for deleting a contact."""
