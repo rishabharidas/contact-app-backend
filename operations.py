@@ -1,9 +1,9 @@
 import json
 from starlette.responses import JSONResponse
 from sqlalchemy import JSON, delete
-from databasedata import connected_engine
 from sqlalchemy.sql import insert, update, delete
 
+from databasedata import connected_engine # importing connection engine
 from tables import contactemails, contactphones, contactstable
 
 async def contact_creation(request):
@@ -13,7 +13,7 @@ async def contact_creation(request):
     contact_basics = {}
     email = {}
     received_contact = await request.json()
-    for contact_data in received_contact: # --------- basics & job insertion
+    for contact_data in received_contact: # ------ basics & job insertion
 
         contact_basics[contact_data] = received_contact[contact_data]
         if contact_data == "job":
@@ -109,6 +109,7 @@ async def list_all_contacts(request):
             left join contactphones
                 on contactphones.contactId = contactstable.contactId 
         group by contactstable.contactId""" # query to take all contacts
+
     contact_data = connected_engine.execute(query)
     for contact in contact_data:
         contacts.append(json.loads(contact.contacts)) #append contacts to list
@@ -306,13 +307,15 @@ async def edit_contact(request):
 
     passed_phones_data = passed_contact["phones"] # saving values of phones data
     number = {}
+
     # adding all keys from passed resume of phones to list
     phones_keys_user = [number_set["type"]
     for number_set in passed_phones_data] 
 
     async def number_insertion(): # number insertion function
-        for key_values in phones_keys_user:
+        for keys_value in phones_keys_user:
             for update_number in passed_phones_data:
+
                 if update_number["type"] == key_values:
                     number["contactId"] = requested_contactId
                     for key, value in update_number.items():
@@ -380,7 +383,7 @@ async def edit_contact(request):
     for email_set in passed_emails_data]  
 
     async def email_insertion(): # function for emails insertion
-        for key_values in emails_keys_user:
+        for keys_value in emails_keys_user:
             for update_email in passed_emails_data:
                 if update_email["type"] == key_values:
                     email["contactId"] = requested_contactId
@@ -404,6 +407,8 @@ async def edit_contact(request):
     # add all key fron db of emails to list
     emails_keys_db = [email_set["type"] 
     for email_set in contact_from_db["emails"]] 
+
+    # findind difference to find the removed data
     removed_type = set(emails_keys_db) - set(emails_keys_user)
     for to_delete_type in removed_type:
         delete_query = delete(contactemails)\
@@ -412,6 +417,7 @@ async def edit_contact(request):
         print("deleting ", to_delete_type)
         connected_engine.execute(delete_query)
 
+    #finding differnece to find the updatable data
     update_type = set(emails_keys_db) - removed_type 
     for to_update_type in update_type: # update existing values
         for update_email in passed_emails_data:
@@ -425,14 +431,15 @@ async def edit_contact(request):
                 connected_engine.execute(email_update_query)
                 print("updating phone emails" )
     
-    for key_values in emails_keys_user: # insert if new values
+    # section for inserting new added dicts
+    for key_values in emails_keys_user:
         try:
-            if key_values not in emails_keys_db:
+            if key_values not in emails_keys_db: # finds new recevied dicts
                 for update_email in passed_emails_data:
                     if update_email["type"] == key_values:
                         email["contactId"] = requested_contactId
                         for key, value in update_email.items():
-                            email[key] = value
+                            email[key] = value # adding to dict for insertion
                         email_update_query = insert(contactemails)\
                             .values(**email) # update query
                         connected_engine.execute(email_update_query)
@@ -445,15 +452,17 @@ async def edit_contact(request):
 async def delete_contact(request):
     """function for deleting a contact."""
     requested_contactId = request.path_params['contactId']
+
     delete_query = delete(contactstable).where(
         contactstable.contactId == requested_contactId
         ) # delete query
     delete_query2 = delete(contactemails).where(
-        contactstable.contactId == requested_contactId
+        contactemails.contactId == requested_contactId
         ) # delete query
     delete_query3 = delete(contactphones).where(
-    contactstable.contactId == requested_contactId
+    contactphones.contactId == requested_contactId
     ) # delete query
+    
     connected_engine.execute(delete_query3) # executing delete
     connected_engine.execute(delete_query2) # executing delete
     connected_engine.execute(delete_query) # executing delete
