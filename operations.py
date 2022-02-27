@@ -1,6 +1,5 @@
 import json
 from starlette.responses import JSONResponse
-from sqlalchemy import JSON, delete
 from sqlalchemy.sql import insert, update, delete
 
 from databasedata import connected_engine # importing connection engine
@@ -22,13 +21,23 @@ async def contact_creation(request):
                 contact_basics[job_details] = \
                     received_contact[contact_data][job_details]
 
-    contact_basics.pop("job")
-    contact_basics.pop("phones")
-    contact_basics.pop("emails")
+    try:
+        contact_basics.pop("job")
+    except KeyError:
+        pass
+    try:
+        contact_basics.pop("phones")
+    except KeyError:
+        pass
+    try:
+        contact_basics.pop("emails")
+    except KeyError:
+        pass
     try:
         contact_basics.pop("contactId")
-    except:
+    except KeyError:
         pass
+
     contact_basics_query = insert(contactstable).values(**contact_basics)
     connected_engine.execute(contact_basics_query)
 
@@ -103,7 +112,7 @@ async def list_all_contacts(request):
                                 "companyName", contactstable.companyName,
                                 "jobTitle", contactstable.jobTitle
                             )
-                ) as contacts from contactstable
+                ) as contact from contactstable
             left join contactemails
                 on contactemails.contactId = contactstable.contactId
             left join contactphones
@@ -112,7 +121,14 @@ async def list_all_contacts(request):
 
     contact_data = connected_engine.execute(query)
     for contact in contact_data:
-        contacts.append(json.loads(contact.contacts)) #append contacts to list
+        contact = json.loads(contact.contact)
+        contact = {
+            key : value for key, value in contact.items()
+            if value
+        } # removing empty key values
+
+        # append search results to list
+        contacts.append(contact)
 
     return JSONResponse(contacts)
 
@@ -165,8 +181,13 @@ async def contact_details(request):
     try:
         for contact_data in contact_result:
             contact = json.loads(contact_data.contact)
+            contact = {
+                key : value for key, value in contact.items()
+                if value
+            }
     except:
         raise Exception("no contact")
+    
 
     return JSONResponse(contact)
 
@@ -221,8 +242,14 @@ async def search_contact(request):
         contacts = []
         for contact_data in contact_result:
 
+            contact = json.loads(contact_data.contact)
+            contact = {
+                key : value for key, value in contact.items()
+                if value
+            } # removing empty key values
+
             # append search results to list
-            contacts.append(json.loads(contact_data.contact))
+            contacts.append(contact)
             
     except:
         raise Exception("no contact")
@@ -293,161 +320,194 @@ async def edit_contact(request):
                 contact_basics[job_details] = \
                     passed_contact[contact_data][job_details]
 
-    contact_basics.pop("job")
-    contact_basics.pop("phones")
-    contact_basics.pop("emails")
+    try:
+        contact_basics.pop("job")
+    except KeyError:
+        pass
+    try:
+        contact_basics.pop("phones")
+    except KeyError:
+        pass
+    try:
+        contact_basics.pop("emails")
+    except KeyError:
+        pass
     contact_basics.pop("contactId")
 
     update_name_query = update(contactstable).where(
         contactstable.contactId == requested_contactId
         ).values(**contact_basics) # query to update all basics data
         
-    connected_engine.execute(update_name_query) # ----- End for basics insertion
+    connected_engine.execute(update_name_query) # --- End for basics insertion
 
 
-    passed_phones_data = passed_contact["phones"] # saving values of phones data
-    number = {}
-
-    # adding all keys from passed resume of phones to list
-    phones_keys_user = [number_set["type"]
-    for number_set in passed_phones_data] 
-
-    async def number_insertion(): # number insertion function
-        for keys_value in phones_keys_user:
-            for update_number in passed_phones_data:
-
-                if update_number["type"] == key_values:
-                    number["contactId"] = requested_contactId
-                    for key, value in update_number.items():
-                        number[key] = value
-                    number_update_query = insert(contactphones)\
-                        .values(**number)
-                    connected_engine.execute(number_update_query)
-                    print("inserting" )   
-        
     try:
-        # add all key fron db of phones to list
-        phones_keys_db = [number_set["type"] 
-        for number_set in contact_from_db["phones"]] 
-    except TypeError:
-        await number_insertion()
-    contact_result = connected_engine.execute(contact_get_query) # execute qry
-    for contact_data in contact_result:
-        contact_from_db = json.loads(contact_data.contact)
+        number = {}
+        # saving values of phones data
+        passed_phones_data = passed_contact["phones"] 
 
-    # add all key fron db of phones to list
-    phones_keys_db = [number_set["type"] 
-    for number_set in contact_from_db["phones"]] 
-    # finding to be deleted number set
-    removed_type = set(phones_keys_db) - set(phones_keys_user)
-    for to_delete_type in removed_type:
-        delete_query = delete(contactphones)\
-                .where(contactphones.contactId == requested_contactId)\
-                .where(contactphones.type == to_delete_type)
-        print("deleting ", to_delete_type)
-        connected_engine.execute(delete_query)
+        # adding all keys from passed resume of phones to list
+        phones_keys_user = [ 
+            number_set["type"]
+            for number_set in passed_phones_data
+        ] 
 
-    # finding diference betweeen lists
-    update_type = set(phones_keys_db) - removed_type # for update 
-    for to_update_type in update_type:
-        for update_number in passed_phones_data:
-            if update_number["type"] == to_update_type:
-                for key, value in update_number.items():
-                    number[key] = value
-                number_update_query = update(contactphones)\
-                    .where(contactphones.contactId == requested_contactId)\
-                    .where(contactphones.type == to_update_type)\
-                    .values(**number) # update query
-                connected_engine.execute(number_update_query)
-                print("updating phone numbers" )
-    
-    for key_values in phones_keys_user:
-        try:
-            if key_values not in phones_keys_db: # insertion on update
+        async def number_insertion(): # number insertion function
+            for keys_value in phones_keys_user:
                 for update_number in passed_phones_data:
+
                     if update_number["type"] == key_values:
                         number["contactId"] = requested_contactId
                         for key, value in update_number.items():
                             number[key] = value
                         number_update_query = insert(contactphones)\
-                            .values(**number) # insert query
+                            .values(**number)
                         connected_engine.execute(number_update_query)
-                        print("inserting" )
-        except:
-            await number_insertion()  
-    
-    passed_emails_data = passed_contact["emails"] # saving "emails" data
-    email = {}
-    # adding all keys from passed resume of emails to list
-    emails_keys_user = [email_set["type"] 
-    for email_set in passed_emails_data]  
+            
+        try:
+            # add all key fron db of phones to list
+            phones_keys_db = [
+                number_set["type"] 
+                for number_set in contact_from_db["phones"]
+            ] 
+        except TypeError:
+            await number_insertion()
 
-    async def email_insertion(): # function for emails insertion
-        for keys_value in emails_keys_user:
-            for update_email in passed_emails_data:
-                if update_email["type"] == key_values:
-                    email["contactId"] = requested_contactId
-                    for key, value in update_email.items():
-                        email[key] = value
-                    email_update_query = insert(contactemails)\
-                        .values(**email)
-                    connected_engine.execute(email_update_query)
-                    print("inserting" )   
+        contact_result = connected_engine.execute(contact_get_query)
+        for contact_data in contact_result:
+            contact_from_db = json.loads(contact_data.contact)
+
+        # add all key fron db of phones to list
+        phones_keys_db = [
+            number_set["type"] 
+            for number_set in contact_from_db["phones"]
+        ] 
+
+        # finding to be deleted number set
+        removed_type = set(phones_keys_db) - set(phones_keys_user)
+
+        for to_delete_type in removed_type:
+            delete_query = delete(contactphones)\
+                .where(contactphones.contactId == requested_contactId)\
+                .where(contactphones.type == to_delete_type)
+            connected_engine.execute(delete_query)
+
+        # finding diference betweeen lists
+        update_type = set(phones_keys_db) - removed_type # for update 
+        for to_update_type in update_type:
+            for update_number in passed_phones_data:
+                if update_number["type"] == to_update_type:
+                    for key, value in update_number.items():
+                        number[key] = value
+                    number_update_query = update(contactphones).where(
+                        contactphones.contactId == requested_contactId
+                    ).where(contactphones.type == to_update_type)\
+                        .values(**number) # update query
+                    connected_engine.execute(number_update_query)
+        
+        for key_values in phones_keys_user:
+            try:
+                if key_values not in phones_keys_db: # insertion on update
+                    for update_number in passed_phones_data:
+                        if update_number["type"] == key_values:
+                            number["contactId"] = requested_contactId
+                            for key, value in update_number.items():
+                                number[key] = value
+                            number_update_query = insert(contactphones)\
+                                .values(**number) # insert query
+                            connected_engine.execute(number_update_query)
+            except:
+                await number_insertion()  
+
+        # --- end for number section
+
+    except KeyError:
+        delete_query = delete(contactphones).where(
+            contactphones.contactId == requested_contactId
+        ) # delete query
+        connected_engine.execute(delete_query)
         
     try:
-        # add all key fron db of emails to list
-        emails_keys_db = [email_set["type"] 
-        for email_set in contact_from_db["emails"]]
-    except TypeError:
-        await email_insertion()
+        email = {}
+        passed_emails_data = passed_contact["emails"] # saving "emails" data
+        # adding all keys from passed resume of emails to list
+        emails_keys_user = [email_set["type"] 
+        for email_set in passed_emails_data]  
 
-    contact_result = connected_engine.execute(contact_get_query) # execute qry
-    for contact_data in contact_result: # deleting old values
-        contact_from_db = json.loads(contact_data.contact)
-    # add all key fron db of emails to list
-    emails_keys_db = [email_set["type"] 
-    for email_set in contact_from_db["emails"]] 
-
-    # findind difference to find the removed data
-    removed_type = set(emails_keys_db) - set(emails_keys_user)
-    for to_delete_type in removed_type:
-        delete_query = delete(contactemails)\
-                .where(contactemails.contactId == requested_contactId)\
-                .where(contactemails.type == to_delete_type) # delete query
-        print("deleting ", to_delete_type)
-        connected_engine.execute(delete_query)
-
-    #finding differnece to find the updatable data
-    update_type = set(emails_keys_db) - removed_type 
-    for to_update_type in update_type: # update existing values
-        for update_email in passed_emails_data:
-            if update_email["type"] == to_update_type:
-                for key, value in update_email.items():
-                    email[key] = value
-                email_update_query = update(contactemails)\
-                    .where(contactemails.contactId == requested_contactId)\
-                    .where(contactemails.type == to_update_type)\
-                    .values(**email) # update query
-                connected_engine.execute(email_update_query)
-                print("updating phone emails" )
-    
-    # section for inserting new added dicts
-    for key_values in emails_keys_user:
-        try:
-            if key_values not in emails_keys_db: # finds new recevied dicts
+        async def email_insertion(): # function for emails insertion
+            for keys_value in emails_keys_user:
                 for update_email in passed_emails_data:
                     if update_email["type"] == key_values:
                         email["contactId"] = requested_contactId
                         for key, value in update_email.items():
-                            email[key] = value # adding to dict for insertion
+                            email[key] = value
                         email_update_query = insert(contactemails)\
-                            .values(**email) # update query
+                            .values(**email)
                         connected_engine.execute(email_update_query)
-                        print("inserting" )
-        except:
-            await email_insertion()  
-    
-    return JSONResponse("sucess")
+            
+        try:
+            # add all key fron db of emails to list
+            emails_keys_db = [
+                email_set["type"] 
+                for email_set in contact_from_db["emails"]
+            ]
+        except TypeError:
+            await email_insertion()
+
+        contact_result = connected_engine.execute(contact_get_query) # run qry
+        for contact_data in contact_result: # deleting old values
+            contact_from_db = json.loads(contact_data.contact)
+
+        # add all key fron db of emails to list
+        emails_keys_db = [
+            email_set["type"] 
+            for email_set in contact_from_db["emails"]
+        ] 
+
+        # findind difference to find the removed data
+        removed_type = set(emails_keys_db) - set(emails_keys_user)
+        for to_delete_type in removed_type:
+            delete_query = delete(contactemails)\
+                    .where(contactemails.contactId == requested_contactId)\
+                    .where(contactemails.type == to_delete_type) # delete query
+            connected_engine.execute(delete_query)
+
+        # finding differnece to find the updatable data
+        update_type = set(emails_keys_db) - removed_type 
+        for to_update_type in update_type: # update existing values
+            for update_email in passed_emails_data:
+                if update_email["type"] == to_update_type:
+                    for key, value in update_email.items():
+                        email[key] = value
+                    email_update_query = update(contactemails).where(
+                        contactemails.contactId == requested_contactId
+                        ).where(contactemails.type == to_update_type)\
+                        .values(**email) # update query
+                    connected_engine.execute(email_update_query)
+        
+        # section for inserting new added dicts
+        for key_values in emails_keys_user:
+            try:
+                if key_values not in emails_keys_db: # finds new recevied dicts
+                    for update_email in passed_emails_data:
+                        if update_email["type"] == key_values:
+                            email["contactId"] = requested_contactId
+                            for key, value in update_email.items():
+                                email[key] = value # adding to dict for insertion
+                            email_update_query = insert(contactemails)\
+                                .values(**email) # update query
+                            connected_engine.execute(email_update_query)
+            except:
+                await email_insertion()  
+
+    except KeyError:
+        delete_query = delete(contactemails)\
+                .where(
+                    contactemails.contactId == requested_contactId
+                )# del qry
+        connected_engine.execute(delete_query)
+        
+    return JSONResponse("Sucessfully Updated")
 
 async def delete_contact(request):
     """function for deleting a contact."""
@@ -455,17 +515,8 @@ async def delete_contact(request):
 
     delete_query = delete(contactstable).where(
         contactstable.contactId == requested_contactId
-        ) # delete query
-    delete_query2 = delete(contactemails).where(
-        contactemails.contactId == requested_contactId
-        ) # delete query
-    delete_query3 = delete(contactphones).where(
-    contactphones.contactId == requested_contactId
-    ) # delete query
-    
-    connected_engine.execute(delete_query3) # executing delete
-    connected_engine.execute(delete_query2) # executing delete
-    connected_engine.execute(delete_query) # executing delete
+    ) # query for deletion
+    connected_engine.execute(delete_query) # delte query execution
 
     return JSONResponse("Deleted Sucessfully")
 
