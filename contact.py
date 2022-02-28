@@ -3,18 +3,19 @@ from starlette.routing import Route
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 
-from operations import * # importing everything from operations
+from operations import * # importing everything from operations.py
 
 routes = [
-    Route("/contacts/", endpoint=list_all_contacts, methods=["GET"]), # for LIST
-    Route("/contact/", endpoint=contact_creation, methods=["POST"]), # for CFREATE
+    # end points for all the functons
+    Route("/contacts/", endpoint=list_all_contacts, methods=["GET"]), # to list
+    Route("/contacts/search/", endpoint=search_contact, methods=["GET"]), # search contacts
+    Route("/contact/", endpoint=contact_creation, methods=["POST"]), # for create
     Route("/contacts/{contactId:int}", endpoint=contact_details,
-    methods=["GET"]), # for DETAILS
+    methods=["GET"]), # for contact details
     Route("/contacts/{contactId:int}", endpoint=delete_contact,
-    methods=["DELETE"]), # foe DELETE
+    methods=["DELETE"]), # for deletion 
     Route("/contacts/{contactId:int}", endpoint=edit_contact,
-    methods=["PUT"]), # for EDIT
-    Route("/contacts/", endpoint=search_contact, methods=["GET"]) # search contacts
+    methods=["PUT"]) # for edit
 ]
 
 middleware = [

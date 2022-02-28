@@ -239,22 +239,22 @@ async def search_contact(request):
     contact_result=  connected_engine.execute(details_query)
 
     try:
-        contacts = []
+        search_contacts = []
         for contact_data in contact_result:
 
-            contact = json.loads(contact_data.contact)
-            contact = {
-                key : value for key, value in contact.items()
+            search_contact = json.loads(contact_data.contact)
+            search_contact = {
+                key : value for key, value in search_contact.items()
                 if value
             } # removing empty key values
 
             # append search results to list
-            contacts.append(contact)
+            search_contacts.append(search_contact)
             
     except:
         raise Exception("no contact")
 
-    return JSONResponse(contacts)
+    return JSONResponse(search_contacts)
 
 async def edit_contact(request):
     """function for editing a contact."""
