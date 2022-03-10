@@ -38,12 +38,22 @@ async def contact_creation(request):
     except KeyError:
         pass
 
+    try: # to check if no names are passed
+        try:
+            if contact_basics["firstName"]:
+                pass
+        except KeyError:
+            if contact_basics["lastName"]:
+                pass
+    except KeyError:
+        contact_basics["firstName"] = "No Name" # default name
+
     contact_basics_query = insert(contactstable).values(**contact_basics)
     connected_engine.execute(contact_basics_query)
 
     max_id = connected_engine.execute(
         f"select contactId from contactstable where contactId = @@Identity"
-        ).fetchall()
+    ).fetchall()
 
     for i in max_id:
         contactId = i[0]
@@ -121,7 +131,7 @@ async def list_all_contacts(request):
 
     contact_data = connected_engine.execute(query)
     for contact in contact_data:
-        contact = json.loads(contact.contact)
+        contact = json.loads(contact.contact) # loads contact as json
         contact = {
             key : value for key, value in contact.items()
             if value
@@ -135,8 +145,8 @@ async def list_all_contacts(request):
 async def contact_details(request):
     """function to search for a contact."""
     requested_contactId = request.path_params['contactId'] # takes path parms
-    # query for contact details
 
+    # query for collecting contact details
     details_query = f"""
             select json_object(
             "contactId", contactstable.contactId,
@@ -193,7 +203,7 @@ async def contact_details(request):
 
 async def search_contact(request):
     """Function to serach contacts on name"""
-    requested_contactname = request.query_params['name']
+    requested_contactname = request.query_params['name'] # parameter passing
 
     details_query = f"""
             select json_object(
@@ -241,7 +251,7 @@ async def search_contact(request):
     try:
         search_contacts = []
         for contact_data in contact_result:
-
+            # loads each contacts to a list
             search_contact = json.loads(contact_data.contact)
             search_contact = {
                 key : value for key, value in search_contact.items()
@@ -398,7 +408,7 @@ async def edit_contact(request):
             for update_number in passed_phones_data:
                 if update_number["type"] == to_update_type:
                     for key, value in update_number.items():
-                        number[key] = value
+                        number[key] = value # adding data to number dict
                     number_update_query = update(contactphones).where(
                         contactphones.contactId == requested_contactId
                     ).where(contactphones.type == to_update_type)\
@@ -412,7 +422,7 @@ async def edit_contact(request):
                         if update_number["type"] == key_values:
                             number["contactId"] = requested_contactId
                             for key, value in update_number.items():
-                                number[key] = value
+                                number[key] = value # adding data to number dict
                             number_update_query = insert(contactphones)\
                                 .values(**number) # insert query
                             connected_engine.execute(number_update_query)
@@ -440,7 +450,7 @@ async def edit_contact(request):
                     if update_email["type"] == key_values:
                         email["contactId"] = requested_contactId
                         for key, value in update_email.items():
-                            email[key] = value
+                            email[key] = value # adding data to email dict
                         email_update_query = insert(contactemails)\
                             .values(**email)
                         connected_engine.execute(email_update_query)
@@ -478,7 +488,7 @@ async def edit_contact(request):
             for update_email in passed_emails_data:
                 if update_email["type"] == to_update_type:
                     for key, value in update_email.items():
-                        email[key] = value
+                        email[key] = value # adding data to email dict
                     email_update_query = update(contactemails).where(
                         contactemails.contactId == requested_contactId
                         ).where(contactemails.type == to_update_type)\
@@ -493,7 +503,7 @@ async def edit_contact(request):
                         if update_email["type"] == key_values:
                             email["contactId"] = requested_contactId
                             for key, value in update_email.items():
-                                email[key] = value # adding to dict for insertion
+                                email[key] = value # adding data to email dict
                             email_update_query = insert(contactemails)\
                                 .values(**email) # update query
                             connected_engine.execute(email_update_query)

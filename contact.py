@@ -7,15 +7,30 @@ from operations import * # importing everything from operations.py
 
 routes = [
     # end points for all the functons
-    Route("/contacts/", endpoint=list_all_contacts, methods=["GET"]), # to list
-    Route("/contacts/search/", endpoint=search_contact, methods=["GET"]), # search contacts
-    Route("/contact/", endpoint=contact_creation, methods=["POST"]), # for create
-    Route("/contacts/{contactId:int}", endpoint=contact_details,
-    methods=["GET"]), # for contact details
-    Route("/contacts/{contactId:int}", endpoint=delete_contact,
-    methods=["DELETE"]), # for deletion 
-    Route("/contacts/{contactId:int}", endpoint=edit_contact,
-    methods=["PUT"]) # for edit
+    Route(
+        "/contacts/", endpoint=list_all_contacts, 
+        methods=["GET"]
+    ), # to list
+    Route(
+        "/contacts/search/", endpoint=search_contact, 
+        methods=["GET"]
+    ), # search contacts
+    Route(
+        "/contact/", endpoint=contact_creation, 
+        methods=["POST"]
+    ), # for create
+    Route(
+        "/contacts/{contactId:int}", endpoint=contact_details, 
+        methods=["GET"]
+    ), # for contact details
+    Route(
+        "/contacts/{contactId:int}", endpoint=delete_contact, 
+        methods=["DELETE"]
+    ), # for deletion 
+    Route(
+        "/contacts/{contactId:int}", endpoint=edit_contact,
+        methods=["PUT"]
+    ) # for edit
 ]
 
 middleware = [
